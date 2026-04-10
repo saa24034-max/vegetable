@@ -1,0 +1,985 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Calendar, 
+  PlusCircle, 
+  Sprout, 
+  LineChart, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight,
+  Camera,
+  ArrowLeft,
+  Home,
+  BookOpen
+} from 'lucide-react';
+import { 
+  LineChart as ReCharts, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
+
+const App = () => {
+  // 画面遷移管理: 'home', 'calendar', 'editor', 'plants', 'chart'
+  const [activeTab, setActiveTab] = useState('home');
+  
+  // 野菜リストの初期データ
+  const [plants, setPlants] = useState([
+    { id: 1, name: 'トマト', plantDate: '2024-05-01', emoji: '🍅' },
+    { id: 2, name: 'キュウリ', plantDate: '2024-05-10', emoji: '🥒' }
+  ]);
+  
+  // 記録の初期データ
+  const [records, setRecords] = useState([
+    { 
+      id: 1, 
+      date: new Date().toISOString().split('T')[0], 
+      plantId: 1, 
+      note: '今日はトマトの芽が出ました！とても可愛いです。', 
+      height: 5, 
+      leaves: 2,
+      image: null 
+    }
+  ]);
+
+  // 選択中の日付
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // --- ヘルパー関数 ---
+  const addPlant = (name, date) => {
+    const newPlant = { id: Date.now(), name, plantDate: date, emoji: '🌱' };
+    setPlants([...plants, newPlant]);
+  };
+
+  const addRecord = (record) => {
+    const id = Date.now();
+    setRecords([...records, { ...record, id }]);
+  };
+
+  const deleteRecord = (id) => {
+    setRecords(records.filter(r => r.id !== id));
+  };
+
+  // --- 各画面コンポーネント ---
+
+  // ホーム画面
+  const HomeDashboard = () => (
+    <div className="p-6 space-y-8">
+      <div className="text-center space-y-2 pt-8 pb-4">
+        <div className="text-6xl mb-4">🌿</div>
+        <h1 className="text-4xl font-black text-blue-900 tracking-tight">生育記録</h1>
+        <p className="text-blue-500 font-medium">野菜の成長を楽しく残そう</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {[
+          { id: 'calendar', label: 'カレンダー', desc: '日々の様子を記録・確認', icon: Calendar, color: 'blue' },
+          { id: 'plants', label: '栽培管理', desc: '何をいつ植えたかチェック', icon: Sprout, color: 'green' },
+          { id: 'chart', label: '成長グラフ', desc: '長さや葉の枚数の推移', icon: LineChart, color: 'orange' }
+        ].map((item) => (
+          <button 
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className="flex items-center justify-between bg-white p-6 rounded-3xl shadow-sm border-2 border-transparent hover:border-blue-300 transition-all active:scale-95 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className={`p-4 bg-${item.color}-100 text-${item.color}-600 rounded-2xl group-hover:bg-${item.color}-500 group-hover:text-white transition-colors`}>
+                <item.icon size={32} />
+              </div>
+              <div className="text-left">
+                <div className="text-xl font-bold text-gray-800">{item.label}</div>
+                <div className="text-sm text-gray-500">{item.desc}</div>
+              </div>
+            </div>
+            <ChevronRight className="text-gray-300" />
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 mt-4 text-center">
+        <p className="text-blue-800 text-sm font-medium">現在 {plants.length} 種類の野菜を育てています 🌱</p>
+      </div>
+    </div>
+  );
+
+  // 栽培管理画面
+  const PlantManager = () => {
+    const [name, setName] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+    return (
+      <div className="p-4 space-y-6 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('home')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">栽培管理 🌿</h2>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-blue-100">
+          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4">
+            <PlusCircle size={20} className="text-green-500" /> 新しく植える
+          </h2>
+          <div className="flex flex-col gap-3">
+            <input 
+              type="text" 
+              placeholder="野菜の名前 (例: ナス)" 
+              className="p-3 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input 
+              type="date" 
+              className="p-3 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            <button 
+              onClick={() => { if(name) { addPlant(name, date); setName(''); } }}
+              className="bg-blue-500 text-white p-3 rounded-xl font-bold hover:bg-blue-600 transition-colors shadow-md"
+            >
+              登録する 🌿
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-lg font-bold text-blue-900 px-2">育てている野菜リスト</h3>
+          {plants.length === 0 ? (
+            <p className="text-center text-gray-400 py-10">野菜を登録してみましょう</p>
+          ) : (
+            plants.map(p => (
+              <div key={p.id} className="bg-white rounded-xl p-4 flex justify-between items-center shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{p.emoji}</span>
+                  <div>
+                    <div className="font-bold text-gray-800">{p.name}</div>
+                    <div className="text-sm text-gray-500">植えた日: {p.plantDate}</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPlants(plants.filter(item => item.id !== p.id))}
+                  className="text-red-400 p-2 hover:bg-red-50 rounded-full transition-colors"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // 日記編集画面
+  const DiaryEditor = () => {
+    const [plantId, setPlantId] = useState(plants[0]?.id || '');
+    const [note, setNote] = useState('');
+    const [height, setHeight] = useState('');
+    const [leaves, setLeaves] = useState('');
+    const [image, setImage] = useState(null);
+
+    const handleImageChange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => setImage(reader.result);
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleSave = () => {
+      if (!plantId || !note) {
+        // 簡易バリデーション: アラートは使わずコンソールまたはUIで示すべきだがここではリターン
+        return;
+      }
+      addRecord({
+        date: selectedDate,
+        plantId: parseInt(plantId),
+        note,
+        height: parseFloat(height) || 0,
+        leaves: parseInt(leaves) || 0,
+        image
+      });
+      setActiveTab('calendar');
+    };
+
+    return (
+      <div className="p-4 space-y-4 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('calendar')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">{selectedDate} の記録 🌿</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">どの野菜？</label>
+            <select 
+              className="w-full p-3 rounded-xl border border-blue-100 bg-blue-50"
+              value={plantId}
+              onChange={(e) => setPlantId(e.target.value)}
+            >
+              <option value="">選択してください</option>
+              {plants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-600 mb-1">草丈 (cm)</label>
+              <input 
+                type="number" 
+                className="w-full p-3 rounded-xl border border-blue-100 bg-blue-50"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-600 mb-1">葉の枚数</label>
+              <input 
+                type="number" 
+                className="w-full p-3 rounded-xl border border-blue-100 bg-blue-50"
+                value={leaves}
+                onChange={(e) => setLeaves(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">日記 (文字数制限なし)</label>
+            <textarea 
+              className="w-full p-3 h-40 rounded-xl border border-blue-100 bg-blue-50 focus:outline-none"
+              placeholder="今日の様子はどうですか？"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            ></textarea>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">写真</label>
+            <div className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-xl p-4 bg-blue-50/50">
+              {image ? (
+                <div className="relative w-full">
+                  <img src={image} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                  <button onClick={() => setImage(null)} className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full">✕</button>
+                </div>
+              ) : (
+                <label className="cursor-pointer flex flex-col items-center w-full py-4">
+                  <Camera size={40} className="text-blue-300 mb-2" />
+                  <span className="text-sm text-blue-400 font-medium">写真をタップして追加</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSave}
+            className="w-full bg-green-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:bg-green-600 transition-colors"
+          >
+            記録を保存する ✨
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // グラフ画面
+  const GrowthChart = () => {
+    const [selectedPlantId, setSelectedPlantId] = useState(plants[0]?.id || '');
+    
+    const chartData = useMemo(() => {
+      return records
+        .filter(r => r.plantId === parseInt(selectedPlantId))
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(r => ({
+          date: r.date.split('-').slice(1).join('/'),
+          height: r.height,
+          leaves: r.leaves
+        }));
+    }, [records, selectedPlantId]);
+
+    return (
+      <div className="p-4 space-y-6 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('home')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">成長のグラフ 📈</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <select 
+            className="w-full p-3 mb-6 rounded-xl border border-blue-100 bg-blue-50 font-bold text-gray-700"
+            value={selectedPlantId}
+            onChange={(e) => setSelectedPlantId(e.target.value)}
+          >
+            {plants.length > 0 ? (
+              plants.map(p => <option key={p.id} value={p.id}>{p.name} のグラフ</option>)
+            ) : (
+              <option value="">野菜を登録してください</option>
+            )}
+          </select>
+
+          {chartData.length > 0 ? (
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ReCharts data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="date" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="height" name="草丈(cm)" stroke="#3b82f6" strokeWidth={3} dot={{r: 6}} activeDot={{r: 8}} />
+                  <Line yAxisId="right" type="monotone" dataKey="leaves" name="葉の枚数" stroke="#10b981" strokeWidth={3} dot={{r: 6}} activeDot={{r: 8}} />
+                </ReCharts>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="py-20 text-center text-gray-400">
+              まだデータがありません。日記を書こう！
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // カレンダー画面
+  const CalendarView = () => {
+    const days = Array.from({length: 31}, (_, i) => i + 1);
+    const dayRecords = records.filter(r => r.date === selectedDate);
+
+    return (
+      <div className="p-4 space-y-6 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('home')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">カレンダー 📅</h2>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-blue-50">
+          <div className="flex justify-between items-center mb-6 px-2">
+            <h2 className="text-xl font-black text-gray-800">2024年 5月</h2>
+            <div className="flex gap-4 text-blue-500">
+              <ChevronLeft className="cursor-pointer hover:bg-blue-50 p-1 rounded-full transition-colors" />
+              <ChevronRight className="cursor-pointer hover:bg-blue-50 p-1 rounded-full transition-colors" />
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
+            {['日','月','火','水','木','金','土'].map(d => (
+              <div key={d} className="text-xs font-bold text-gray-400 py-1 uppercase tracking-widest">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {days.map(d => {
+              const dateStr = `2024-05-${String(d).padStart(2, '0')}`;
+              const hasRecord = records.some(r => r.date === dateStr);
+              const isSelected = selectedDate === dateStr;
+              return (
+                <button 
+                  key={d} 
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`aspect-square flex flex-col items-center justify-center rounded-2xl text-sm font-bold transition-all relative
+                    ${isSelected ? 'bg-blue-600 text-white shadow-lg scale-110 z-10' : 'bg-gray-50 text-gray-700 hover:bg-blue-50'}
+                  `}
+                >
+                  {d}
+                  {hasRecord && !isSelected && (
+                    <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center px-2">
+            <h3 className="font-bold text-gray-700 flex items-center gap-2">
+              <span className="p-2 bg-blue-100 rounded-lg"><BookOpen size={16} className="text-blue-600" /></span>
+              {selectedDate} の記録
+            </h3>
+            <button 
+              onClick={() => setActiveTab('editor')}
+              className="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1 shadow-md hover:bg-green-600 active:scale-95 transition-all"
+            >
+              <PlusCircle size={16} /> 日記を書く
+            </button>
+          </div>
+
+          {dayRecords.length > 0 ? (
+            dayRecords.map(r => {
+              const plant = plants.find(p => p.id === r.plantId);
+              return (
+                <div key={r.id} className="bg-white rounded-3xl p-6 shadow-sm border border-blue-50 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl p-3 bg-gray-50 rounded-2xl">{plant?.emoji || '🌱'}</div>
+                      <div>
+                        <span className="font-black text-lg text-gray-800">{plant?.name || '不明な野菜'}</span>
+                        <div className="flex gap-2 text-[10px] font-bold mt-0.5">
+                          <span className="text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">草丈: {r.height}cm</span>
+                          <span className="text-green-500 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">葉: {r.leaves}枚</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => deleteRecord(r.id)} className="text-gray-300 hover:text-red-400 p-2 transition-colors">
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                  {r.image && (
+                    <img src={r.image} alt="Daily" className="w-full h-56 object-cover rounded-3xl shadow-inner" />
+                  )}
+                  <p className="text-gray-600 leading-relaxed whitespace-pre-wrap font-medium">{r.note}</p>
+                </div>
+              );
+            })
+          ) : (
+            <div className="bg-white/40 border-2 border-dashed border-blue-200 rounded-3xl p-12 text-center text-blue-400 italic">
+              <div className="text-4xl mb-2 opacity-50">✍️</div>
+              この日の記録はありません
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f0f7ff] text-gray-800 font-sans selection:bg-blue-200">
+      {/* 背景飾り */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div className="absolute top-20 right-[10%] text-6xl rotate-12">🍃</div>
+        <div className="absolute bottom-40 left-[5%] text-7xl -rotate-12">🌿</div>
+        <div className="absolute top-1/2 left-[15%] text-5xl opacity-40">🌱</div>
+        <div className="absolute bottom-20 right-[20%] text-5xl rotate-45">✨</div>
+      </div>
+
+      {/* コンテンツ */}
+      <main className="max-w-md mx-auto relative z-10">
+        {activeTab === 'home' && <HomeDashboard />}
+        {activeTab === 'calendar' && <CalendarView />}
+        {activeTab === 'editor' && <DiaryEditor />}
+        {activeTab === 'plants' && <PlantManager />}
+        {activeTab === 'chart' && <GrowthChart />}
+      </main>
+
+      {/* 下部ナビゲーション (ホーム以外で表示) */}
+      {activeTab !== 'home' && (
+        <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl rounded-[32px] p-2 flex justify-around items-center z-50">
+          <button onClick={() => setActiveTab('home')} className="flex flex-col items-center gap-1 p-3 text-gray-400 hover:text-blue-500 transition-colors">
+            <Home size={22} />
+            <span className="text-[10px] font-bold">ホーム</span>
+          </button>
+          <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${activeTab === 'calendar' || activeTab === 'editor' ? 'text-blue-600' : 'text-gray-400'}`}>
+            <Calendar size={22} />
+            <span className="text-[10px] font-bold">カレンダー</span>
+          </button>
+          <button onClick={() => setActiveTab('plants')} className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${activeTab === 'plants' ? 'text-green-600' : 'text-gray-400'}`}>
+            <Sprout size={22} />
+            <span className="text-[10px] font-bold">管理</span>
+          </button>
+          <button onClick={() => setActiveTab('chart')} className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${activeTab === 'chart' ? 'text-orange-600' : 'text-gray-400'}`}>
+            <LineChart size={22} />
+            <span className="text-[10px] font-bold">グラフ</span>
+          </button>
+        </nav>
+      )}
+    </div>
+  );
+};
+
+export default App;import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Calendar, 
+  PlusCircle, 
+  Sprout, 
+  LineChart, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight,
+  Camera,
+  ArrowLeft,
+  Home,
+  BookOpen
+} from 'lucide-react';
+import { 
+  LineChart as ReCharts, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
+
+const App = () => {
+  // 画面遷移管理: 'home', 'calendar', 'editor', 'plants', 'chart'
+  const [activeTab, setActiveTab] = useState('home');
+  
+  // 野菜リストの初期データ
+  const [plants, setPlants] = useState([
+    { id: 1, name: 'トマト', plantDate: '2024-05-01', emoji: '🍅' },
+    { id: 2, name: 'キュウリ', plantDate: '2024-05-10', emoji: '🥒' }
+  ]);
+  
+  // 記録の初期データ
+  const [records, setRecords] = useState([
+    { 
+      id: 1, 
+      date: new Date().toISOString().split('T')[0], 
+      plantId: 1, 
+      note: '今日はトマトの芽が出ました！とても可愛いです。', 
+      height: 5, 
+      leaves: 2,
+      image: null 
+    }
+  ]);
+
+  // 選択中の日付
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // --- ヘルパー関数 ---
+  const addPlant = (name, date) => {
+    const newPlant = { id: Date.now(), name, plantDate: date, emoji: '🌱' };
+    setPlants([...plants, newPlant]);
+  };
+
+  const addRecord = (record) => {
+    const id = Date.now();
+    setRecords([...records, { ...record, id }]);
+  };
+
+  const deleteRecord = (id) => {
+    setRecords(records.filter(r => r.id !== id));
+  };
+
+  // --- 各画面コンポーネント ---
+
+  // ホーム画面
+  const HomeDashboard = () => (
+    <div className="p-6 space-y-8">
+      <div className="text-center space-y-2 pt-8 pb-4">
+        <div className="text-6xl mb-4">🌿</div>
+        <h1 className="text-4xl font-black text-blue-900 tracking-tight">生育記録</h1>
+        <p className="text-blue-500 font-medium">野菜の成長を楽しく残そう</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {[
+          { id: 'calendar', label: 'カレンダー', desc: '日々の様子を記録・確認', icon: Calendar, color: 'blue' },
+          { id: 'plants', label: '栽培管理', desc: '何をいつ植えたかチェック', icon: Sprout, color: 'green' },
+          { id: 'chart', label: '成長グラフ', desc: '長さや葉の枚数の推移', icon: LineChart, color: 'orange' }
+        ].map((item) => (
+          <button 
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className="flex items-center justify-between bg-white p-6 rounded-3xl shadow-sm border-2 border-transparent hover:border-blue-300 transition-all active:scale-95 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className={`p-4 bg-${item.color}-100 text-${item.color}-600 rounded-2xl group-hover:bg-${item.color}-500 group-hover:text-white transition-colors`}>
+                <item.icon size={32} />
+              </div>
+              <div className="text-left">
+                <div className="text-xl font-bold text-gray-800">{item.label}</div>
+                <div className="text-sm text-gray-500">{item.desc}</div>
+              </div>
+            </div>
+            <ChevronRight className="text-gray-300" />
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 mt-4 text-center">
+        <p className="text-blue-800 text-sm font-medium">現在 {plants.length} 種類の野菜を育てています 🌱</p>
+      </div>
+    </div>
+  );
+
+  // 栽培管理画面
+  const PlantManager = () => {
+    const [name, setName] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+    return (
+      <div className="p-4 space-y-6 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('home')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">栽培管理 🌿</h2>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-blue-100">
+          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4">
+            <PlusCircle size={20} className="text-green-500" /> 新しく植える
+          </h2>
+          <div className="flex flex-col gap-3">
+            <input 
+              type="text" 
+              placeholder="野菜の名前 (例: ナス)" 
+              className="p-3 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input 
+              type="date" 
+              className="p-3 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            <button 
+              onClick={() => { if(name) { addPlant(name, date); setName(''); } }}
+              className="bg-blue-500 text-white p-3 rounded-xl font-bold hover:bg-blue-600 transition-colors shadow-md"
+            >
+              登録する 🌿
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-lg font-bold text-blue-900 px-2">育てている野菜リスト</h3>
+          {plants.length === 0 ? (
+            <p className="text-center text-gray-400 py-10">野菜を登録してみましょう</p>
+          ) : (
+            plants.map(p => (
+              <div key={p.id} className="bg-white rounded-xl p-4 flex justify-between items-center shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{p.emoji}</span>
+                  <div>
+                    <div className="font-bold text-gray-800">{p.name}</div>
+                    <div className="text-sm text-gray-500">植えた日: {p.plantDate}</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPlants(plants.filter(item => item.id !== p.id))}
+                  className="text-red-400 p-2 hover:bg-red-50 rounded-full transition-colors"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // 日記編集画面
+  const DiaryEditor = () => {
+    const [plantId, setPlantId] = useState(plants[0]?.id || '');
+    const [note, setNote] = useState('');
+    const [height, setHeight] = useState('');
+    const [leaves, setLeaves] = useState('');
+    const [image, setImage] = useState(null);
+
+    const handleImageChange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => setImage(reader.result);
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleSave = () => {
+      if (!plantId || !note) {
+        // 簡易バリデーション: アラートは使わずコンソールまたはUIで示すべきだがここではリターン
+        return;
+      }
+      addRecord({
+        date: selectedDate,
+        plantId: parseInt(plantId),
+        note,
+        height: parseFloat(height) || 0,
+        leaves: parseInt(leaves) || 0,
+        image
+      });
+      setActiveTab('calendar');
+    };
+
+    return (
+      <div className="p-4 space-y-4 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('calendar')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">{selectedDate} の記録 🌿</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">どの野菜？</label>
+            <select 
+              className="w-full p-3 rounded-xl border border-blue-100 bg-blue-50"
+              value={plantId}
+              onChange={(e) => setPlantId(e.target.value)}
+            >
+              <option value="">選択してください</option>
+              {plants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-600 mb-1">草丈 (cm)</label>
+              <input 
+                type="number" 
+                className="w-full p-3 rounded-xl border border-blue-100 bg-blue-50"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-600 mb-1">葉の枚数</label>
+              <input 
+                type="number" 
+                className="w-full p-3 rounded-xl border border-blue-100 bg-blue-50"
+                value={leaves}
+                onChange={(e) => setLeaves(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">日記 (文字数制限なし)</label>
+            <textarea 
+              className="w-full p-3 h-40 rounded-xl border border-blue-100 bg-blue-50 focus:outline-none"
+              placeholder="今日の様子はどうですか？"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            ></textarea>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">写真</label>
+            <div className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-xl p-4 bg-blue-50/50">
+              {image ? (
+                <div className="relative w-full">
+                  <img src={image} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                  <button onClick={() => setImage(null)} className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full">✕</button>
+                </div>
+              ) : (
+                <label className="cursor-pointer flex flex-col items-center w-full py-4">
+                  <Camera size={40} className="text-blue-300 mb-2" />
+                  <span className="text-sm text-blue-400 font-medium">写真をタップして追加</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSave}
+            className="w-full bg-green-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:bg-green-600 transition-colors"
+          >
+            記録を保存する ✨
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // グラフ画面
+  const GrowthChart = () => {
+    const [selectedPlantId, setSelectedPlantId] = useState(plants[0]?.id || '');
+    
+    const chartData = useMemo(() => {
+      return records
+        .filter(r => r.plantId === parseInt(selectedPlantId))
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(r => ({
+          date: r.date.split('-').slice(1).join('/'),
+          height: r.height,
+          leaves: r.leaves
+        }));
+    }, [records, selectedPlantId]);
+
+    return (
+      <div className="p-4 space-y-6 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('home')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">成長のグラフ 📈</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <select 
+            className="w-full p-3 mb-6 rounded-xl border border-blue-100 bg-blue-50 font-bold text-gray-700"
+            value={selectedPlantId}
+            onChange={(e) => setSelectedPlantId(e.target.value)}
+          >
+            {plants.length > 0 ? (
+              plants.map(p => <option key={p.id} value={p.id}>{p.name} のグラフ</option>)
+            ) : (
+              <option value="">野菜を登録してください</option>
+            )}
+          </select>
+
+          {chartData.length > 0 ? (
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ReCharts data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="date" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="height" name="草丈(cm)" stroke="#3b82f6" strokeWidth={3} dot={{r: 6}} activeDot={{r: 8}} />
+                  <Line yAxisId="right" type="monotone" dataKey="leaves" name="葉の枚数" stroke="#10b981" strokeWidth={3} dot={{r: 6}} activeDot={{r: 8}} />
+                </ReCharts>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="py-20 text-center text-gray-400">
+              まだデータがありません。日記を書こう！
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // カレンダー画面
+  const CalendarView = () => {
+    const days = Array.from({length: 31}, (_, i) => i + 1);
+    const dayRecords = records.filter(r => r.date === selectedDate);
+
+    return (
+      <div className="p-4 space-y-6 pb-24">
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => setActiveTab('home')} className="p-2 hover:bg-blue-100 rounded-full transition-colors"><ArrowLeft /></button>
+          <h2 className="text-xl font-bold text-blue-800">カレンダー 📅</h2>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-blue-50">
+          <div className="flex justify-between items-center mb-6 px-2">
+            <h2 className="text-xl font-black text-gray-800">2024年 5月</h2>
+            <div className="flex gap-4 text-blue-500">
+              <ChevronLeft className="cursor-pointer hover:bg-blue-50 p-1 rounded-full transition-colors" />
+              <ChevronRight className="cursor-pointer hover:bg-blue-50 p-1 rounded-full transition-colors" />
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
+            {['日','月','火','水','木','金','土'].map(d => (
+              <div key={d} className="text-xs font-bold text-gray-400 py-1 uppercase tracking-widest">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {days.map(d => {
+              const dateStr = `2024-05-${String(d).padStart(2, '0')}`;
+              const hasRecord = records.some(r => r.date === dateStr);
+              const isSelected = selectedDate === dateStr;
+              return (
+                <button 
+                  key={d} 
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`aspect-square flex flex-col items-center justify-center rounded-2xl text-sm font-bold transition-all relative
+                    ${isSelected ? 'bg-blue-600 text-white shadow-lg scale-110 z-10' : 'bg-gray-50 text-gray-700 hover:bg-blue-50'}
+                  `}
+                >
+                  {d}
+                  {hasRecord && !isSelected && (
+                    <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center px-2">
+            <h3 className="font-bold text-gray-700 flex items-center gap-2">
+              <span className="p-2 bg-blue-100 rounded-lg"><BookOpen size={16} className="text-blue-600" /></span>
+              {selectedDate} の記録
+            </h3>
+            <button 
+              onClick={() => setActiveTab('editor')}
+              className="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1 shadow-md hover:bg-green-600 active:scale-95 transition-all"
+            >
+              <PlusCircle size={16} /> 日記を書く
+            </button>
+          </div>
+
+          {dayRecords.length > 0 ? (
+            dayRecords.map(r => {
+              const plant = plants.find(p => p.id === r.plantId);
+              return (
+                <div key={r.id} className="bg-white rounded-3xl p-6 shadow-sm border border-blue-50 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl p-3 bg-gray-50 rounded-2xl">{plant?.emoji || '🌱'}</div>
+                      <div>
+                        <span className="font-black text-lg text-gray-800">{plant?.name || '不明な野菜'}</span>
+                        <div className="flex gap-2 text-[10px] font-bold mt-0.5">
+                          <span className="text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">草丈: {r.height}cm</span>
+                          <span className="text-green-500 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">葉: {r.leaves}枚</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => deleteRecord(r.id)} className="text-gray-300 hover:text-red-400 p-2 transition-colors">
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                  {r.image && (
+                    <img src={r.image} alt="Daily" className="w-full h-56 object-cover rounded-3xl shadow-inner" />
+                  )}
+                  <p className="text-gray-600 leading-relaxed whitespace-pre-wrap font-medium">{r.note}</p>
+                </div>
+              );
+            })
+          ) : (
+            <div className="bg-white/40 border-2 border-dashed border-blue-200 rounded-3xl p-12 text-center text-blue-400 italic">
+              <div className="text-4xl mb-2 opacity-50">✍️</div>
+              この日の記録はありません
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f0f7ff] text-gray-800 font-sans selection:bg-blue-200">
+      {/* 背景飾り */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div className="absolute top-20 right-[10%] text-6xl rotate-12">🍃</div>
+        <div className="absolute bottom-40 left-[5%] text-7xl -rotate-12">🌿</div>
+        <div className="absolute top-1/2 left-[15%] text-5xl opacity-40">🌱</div>
+        <div className="absolute bottom-20 right-[20%] text-5xl rotate-45">✨</div>
+      </div>
+
+      {/* コンテンツ */}
+      <main className="max-w-md mx-auto relative z-10">
+        {activeTab === 'home' && <HomeDashboard />}
+        {activeTab === 'calendar' && <CalendarView />}
+        {activeTab === 'editor' && <DiaryEditor />}
+        {activeTab === 'plants' && <PlantManager />}
+        {activeTab === 'chart' && <GrowthChart />}
+      </main>
+
+      {/* 下部ナビゲーション (ホーム以外で表示) */}
+      {activeTab !== 'home' && (
+        <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl rounded-[32px] p-2 flex justify-around items-center z-50">
+          <button onClick={() => setActiveTab('home')} className="flex flex-col items-center gap-1 p-3 text-gray-400 hover:text-blue-500 transition-colors">
+            <Home size={22} />
+            <span className="text-[10px] font-bold">ホーム</span>
+          </button>
+          <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${activeTab === 'calendar' || activeTab === 'editor' ? 'text-blue-600' : 'text-gray-400'}`}>
+            <Calendar size={22} />
+            <span className="text-[10px] font-bold">カレンダー</span>
+          </button>
+          <button onClick={() => setActiveTab('plants')} className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${activeTab === 'plants' ? 'text-green-600' : 'text-gray-400'}`}>
+            <Sprout size={22} />
+            <span className="text-[10px] font-bold">管理</span>
+          </button>
+          <button onClick={() => setActiveTab('chart')} className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${activeTab === 'chart' ? 'text-orange-600' : 'text-gray-400'}`}>
+            <LineChart size={22} />
+            <span className="text-[10px] font-bold">グラフ</span>
+          </button>
+        </nav>
+      )}
+    </div>
+  );
+};
+
+export default App;
